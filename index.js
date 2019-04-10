@@ -14,7 +14,7 @@ app.get('/peers', (req, res) => {
 });
 
 app.get('/sockets', (req,res) => {
-    res.json(server.sockets);
+    res.json(server.sockets.map(pair => pair.ip));
 });
 
 

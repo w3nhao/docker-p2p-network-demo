@@ -38,11 +38,9 @@ class P2PServer {
     // 他没有明确指定具体哪个对象
     // 我们只能手动绑定
     // this.diccovery.bind(this)
-    setTimeout(() => this.discovery(), 5000);
-
     // 重复多次，直到网络稳定
-    for (let i = 0; i < 5; i++) {
-      setTimeout(() => this.discovery(), 3000);
+    for (let i = 1; i < 4; i++) {
+      setTimeout(() => this.discovery(), 20000 * i);
     }
   }
 
@@ -91,13 +89,15 @@ class P2PServer {
 
   connectToPeer(peer) {
     // 发送前查表，看该节点是否已经主动连接我们
-    if (!this.sockets.includes(pair => pair.ip === peer)) {
+    if (!this.sockets.some(pair => pair.ip === peer)) {
       const socket = new WebSocket("ws://" + peer + ":" + LISTENING_PORT);
       socket.on("open", () => {
         socket.send(JSON.stringify(new P2PMsg(MYIP, MSG_TYPES.peerConnect)));
         this.sockets.push({ ip: peer, socket });
+        console.log(`successfully connect to ${peer}`);
       });
       socket.on("error", () => {
+        socket.close();
         console.log(`an error accur when to connect ${peer}, drop it.`);
       });
     }
@@ -111,7 +111,7 @@ class P2PServer {
   }
 
   copeWithGetListReq(socket, reqIP) {
-    console.log(`First touch by ${reqIP}`);
+    console.log(`A get list request from ${reqIP}`);
     if (reqIP === MYIP) {
       socket.send(
         JSON.stringify(new P2PMsg("placeholder", MSG_TYPES.selfConnect))
@@ -125,9 +125,9 @@ class P2PServer {
 
   copeWithConnectReq(socket, reqIP) {
     // 接收时查表，我们是否已经主动连上该主机
-    if (this.sockets.includes(pair => pair.ip === reqIP)) {
-      console.log("we have connect to it already");
+    if (this.sockets.some(pair => pair.ip === reqIP)) {
       socket.close();
+      console.log("we have connect to it already");
     } else {
       if (!this.peers.includes(reqIP)) this.peers.push(reqIP);
       this.sockets.push({ ip: reqIP, socket });
