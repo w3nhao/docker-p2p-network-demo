@@ -1,13 +1,14 @@
-const P2PServer = require('./p2pserver');
+// const P2PServer = require('./p2pserver');
 const bodyParser = require('body-parser');
 const express = require('express');
 
 const app = express();
-const server = new P2PServer();
+const getP2pServer = require('./get-p2p-server');
+
+const server = getP2pServer()();
 
 app.use(bodyParser.json());
 app.listen(4000, () => console.log(`Listening on port 4000`));
-server.listen();
 
 app.get('/peers', (req, res) => {
     res.json(server.peers);
