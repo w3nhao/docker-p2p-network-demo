@@ -92,9 +92,15 @@ class P2PServer {
     if (!this.sockets.some(pair => pair.ip === peer)) {
       const socket = new WebSocket("ws://" + peer + ":" + LISTENING_PORT);
       socket.on("open", () => {
-        socket.send(JSON.stringify(new P2PMsg(MYIP, MSG_TYPES.peerConnect)));
-        this.sockets.push({ ip: peer, socket });
-        console.log(`successfully connect to ${peer}`);
+        // 异步容错：几乎同时发起连接，若比对方落后，则关闭连接
+        if (!this.sockets.some(pair => pair.ip === peer)) {
+          this.sockets.push({ ip: peer, socket });
+          socket.send(JSON.stringify(new P2PMsg(MYIP, MSG_TYPES.peerConnect)));
+          console.log(`successfully connect to ${peer}`);
+        } else {
+          socket.close();
+          console.log(`${peer} connected to us already.`);
+        }
       });
       socket.on("error", () => {
         socket.close();
@@ -129,8 +135,8 @@ class P2PServer {
       socket.close();
       console.log("we have connect to it already");
     } else {
-      if (!this.peers.includes(reqIP)) this.peers.push(reqIP);
       this.sockets.push({ ip: reqIP, socket });
+      if (!this.peers.includes(reqIP)) this.peers.push(reqIP);
       console.log(`IP: ${reqIP} connectted to us`);
     }
   }
