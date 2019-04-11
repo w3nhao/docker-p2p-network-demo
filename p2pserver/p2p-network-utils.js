@@ -19,6 +19,10 @@ class NetworkUtils {
   static hash(data) {
     return CryptoJS.SHA256(JSON.stringify(data)).toString();
   }
+
+  static verifyUtils(info) {
+    
+  }
 }
 
 module.exports = NetworkUtils;
