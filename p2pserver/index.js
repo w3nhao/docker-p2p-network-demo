@@ -37,8 +37,8 @@ class P2PServer {
     // 我们只能手动绑定
     // this.diccovery.bind(this)
     // 重复多次，直到网络稳定
-    for (let i = 1; i < 4; i++) {
-      setTimeout(async () => this.discovery(), 20000 * i);
+    for (let i = 1; i < 11; i++) {
+      setTimeout(async () => this.discovery(), 6000 * i);
     }
   }
 
