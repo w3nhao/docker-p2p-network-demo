@@ -44,17 +44,21 @@ class P2PServer {
     }
   }
 
-  discovery() {
+  async discovery() {
     let socket = new WebSocket("ws://" + SERVICE_IP + ":" + LISTENING_PORT);
 
-    socket.on("error", () => {
-      console.log(
-        `an error accur when discoverying server, we will try it again.`
-      );
-      setTimeout(() => this.discovery(), 5000);
-    });
-    socket.on("open", () => this.getPeersFrom(socket));
-    socket.on("message", message => this.msgHandler(socket, message));
+    await new Promise((resolve, reject) => {
+      socket.on("open", resolve(socket));
+      socket.on("error", reject(new Error(`err#1 try discovery again.`)));
+    })
+      .then(resolve => {
+        this.getPeersFrom(resolve);
+        resolve.on("message", message => this.msgHandler(resolve, message));
+      })
+      .catch(reject => {
+        console.log(reject);
+        setTimeout(async () => this.discovery(), 5000);
+      });
   }
 
   getPeersFrom(socket) {

@@ -18,4 +18,7 @@ app.get('/sockets', (req,res) => {
     res.json(server.sockets.map(pair => pair.ip));
 });
 
+app.post('pbft', (req, res) => {
+    const clientMsg = req.data;
+})
 
