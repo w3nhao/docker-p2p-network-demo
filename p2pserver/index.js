@@ -1,12 +1,10 @@
 const WebSocket = require("ws");
 const fs = require("fs");
 
-// const MYIP = fs
-//   .readFileSync("/etc/hosts", "utf8")
-//   .toString()
-//   .split(/[\s\n]/)[14]; // 获取内网ip
-
-const MYIP = "";
+const MYIP = fs
+  .readFileSync("/etc/hosts", "utf8")
+  .toString()
+  .split(/[\s\n]/)[14]; // 获取内网ip
 
 const SERVICE_IP = "144.34.172.50"; // 这里是公网入口
 const LISTENING_PORT = 30000;
@@ -62,14 +60,14 @@ class P2PServer {
 
   async getIncomingMsg(socket) {
     return await new Promise((resolve, reject) => {
-      socket.on("message", message => {
-        const msg = JSON.parse(message);
+      socket.onmessage = evt => {
+        const msg = JSON.parse(evt.data);
         if (P2PMsg.verifyMsg(msg)) {
           resolve(msg);
         } else {
-          reject(new Error(`receive an invalid message: ${message}`));
+          reject(new Error(`receive an invalid message: ${evt.data}`));
         }
-      });
+      };
     });
   }
 
@@ -119,11 +117,12 @@ class P2PServer {
 
   async waitingForOpen(socket) {
     return await new Promise((resolve, reject) => {
-      socket.on("open", resolve(socket));
-      socket.on(
-        "error",
-        reject(new Error(`err#1 fail to waiting for socket open`))
-      );
+      socket.onopen = () => {
+        resolve(socket);
+      };
+      socket.onerror = () => {
+        reject(new Error(`err#1 fail to waiting for socket open`));
+      };
     });
   }
 
@@ -136,8 +135,9 @@ class P2PServer {
   copeWithGetPeersResult(result) {
     if (result.type === MSG_TYPES.peerList) {
       // 收表时去重，求并集
-      this.peers.push(...peerList.filter(p => !this.peers.includes(p)));
+      this.peers.push(...result.data.filter(p => !this.peers.includes(p)));
       console.log(`now the list : ${this.peers}`);
+      console.log(`now the sockets: ${this.sockets.map(pair => pair.ip)}`);
     } else {
       throw Error(`err#4 met error when getting list: ${result}`);
     }
