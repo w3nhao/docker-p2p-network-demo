@@ -4,7 +4,7 @@ services:
     # replace username/repo:tag with your name and image details
     image: www.chashaotm.gq/simplep2p
     deploy:
-      replicas: 5
+      replicas: 3
       resources:
         limits:
           cpus: "0.1"
@@ -16,5 +16,23 @@ services:
       - "30000:30000"
     networks:
       - webnet
+  inspect:
+    image: www.chashaotm.gq/simplep2p
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "9229:9229"
+    command:
+      - node
+      - "--inspect-brk=0.0.0.0"
+      - "." 
+    networks:
+      - webnet 
 networks:
   webnet:

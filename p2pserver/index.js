@@ -1,10 +1,12 @@
 const WebSocket = require("ws");
 const fs = require("fs");
 
-const MYIP = fs
-  .readFileSync("/etc/hosts", "utf8")
-  .toString()
-  .split(/[\s\n]/)[14]; // 获取内网ip
+// const MYIP = fs
+//   .readFileSync("/etc/hosts", "utf8")
+//   .toString()
+//   .split(/[\s\n]/)[14]; // 获取内网ip
+
+const MYIP = "";
 
 const SERVICE_IP = "144.34.172.50"; // 这里是公网入口
 const LISTENING_PORT = 30000;

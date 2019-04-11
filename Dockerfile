@@ -13,4 +13,4 @@ EXPOSE 30000
 
 RUN npm install
 
-CMD npm start
+CMD ["node", "."]
