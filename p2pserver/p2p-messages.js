@@ -6,11 +6,11 @@ const NetworkUtils = require("./p2p-network-utils");
 //   peerList: "PEER_LIST", // 回应获取列表信号
 //   getPeers: "GET_PEERS", //
 //   selfConnect: "ISYOURSELF",
-//   normal: "NORMAL"
+//   normal: undefined
 // };
 class P2PMSG {
   constructor(data, type) {
-    this.type = type ? type : "NORMAL";
+    this.type = type;
     this.data = data;
     this.digest = NetworkUtils.hash(this.data);
     this.signature = NetworkUtils.signAsServer(this.digest);
