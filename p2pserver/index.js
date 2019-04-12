@@ -1,19 +1,20 @@
 const WebSocket = require("ws");
 const fs = require("fs");
 
+// 从docker分配的节点host文件中获取内网ip
 const MYIP = fs
   .readFileSync("/etc/hosts", "utf8")
   .toString()
-  .split(/[\s\n]/)[14]; // 获取内网ip
+  .split(/[\s\n]/)[14]; 
 
 const SERVICE_IP = "144.34.172.50"; // 这里是公网入口
 const LISTENING_PORT = 30000;
 
 const P2PMsg = require("./p2p-messages");
 const MSG_TYPES = {
-  peerConnect: "PEER_CONNECT", // 收到新节点socket，加入列表
-  peerList: "PEER_LIST", // 回应获取列表信号
-  getPeers: "GET_PEERS" //
+  peerConnect: "PEER_CONNECT",
+  peerList: "PEER_LIST",
+  getPeers: "GET_PEERS"
 };
 
 class P2PServer {
@@ -30,13 +31,10 @@ class P2PServer {
       this.handlerConnectedSocket(socket)
     );
 
-    // 当我们将该类函数当成参数传入时
-    // 实际只是传入了函数的引用
+    // 当我们将该类函数当成参数传入时,实际只是传入了函数的引用
     // this.dicovery = P2PServer.prototype.discovery
-    // 他没有明确指定具体哪个对象
-    // 我们只能手动绑定
-    // this.diccovery.bind(this)
-    // 重复多次，直到网络稳定
+    // 他没有明确指定具体哪个对象，this指针会被绑定到setTimeout
+    // this.diccovery.bind(this) 或 () => this.discovery()
     for (let i = 1; i < 11; i++) {
       setTimeout(async () => this.discovery(), 6000 * i);
     }
@@ -75,20 +73,18 @@ class P2PServer {
     console.log(`A get list request from ${reqIP}`);
     if (reqIP === MYIP) {
       socket.send(JSON.stringify(new P2PMsg("You've connected to yourself")));
-      console.log("send out a self wrong error.");
     } else {
       socket.send(JSON.stringify(new P2PMsg(this.peers, MSG_TYPES.peerList)));
-      console.log("send out the list");
     }
   }
 
   copeWithConnectReq(socket, reqIP) {
-    // 接收时查表，我们是否已经主动连上该主机
     if (this.sockets.some(pair => pair.ip === reqIP)) {
       socket.close();
       throw Error(`we have connect to ${reqIp} already`);
     } else {
       this.sockets.push({ ip: reqIP, socket });
+      // 可能在收到该socket之前，我们已经从别的节点获取到他的IP
       if (!this.peers.includes(reqIP)) this.peers.push(reqIP);
       console.log(`IP: ${reqIP} connectted to us`);
     }
@@ -97,9 +93,8 @@ class P2PServer {
   async discovery() {
     let socket = new WebSocket("ws://" + SERVICE_IP + ":" + LISTENING_PORT);
     try {
-      let openedSocket = await this.waitingForOpen(socket); // 等待socket打开
-      let result = await this.getPeersFrom(openedSocket); // 等待收到peerList
-      // 收到之后关掉
+      let openedSocket = await this.waitingForOpen(socket);
+      let result = await this.getPeersFrom(openedSocket);
       openedSocket.close();
       this.copeWithGetPeersResult(result);
     } catch (err) {
@@ -136,15 +131,12 @@ class P2PServer {
     if (result.type === MSG_TYPES.peerList) {
       // 收表时去重，求并集
       this.peers.push(...result.data.filter(p => !this.peers.includes(p)));
-      console.log(`now the list : ${this.peers}`);
-      console.log(`now the sockets: ${this.sockets.map(pair => pair.ip)}`);
     } else {
       throw Error(`err#4 met error when getting list: ${result}`);
     }
   }
 
   async connectToPeer(peer) {
-    // 发送前查表，看该节点是否已经主动连接我们
     if (!this.sockets.some(pair => pair.ip === peer)) {
       const socket = new WebSocket("ws://" + peer + ":" + LISTENING_PORT);
       try {
@@ -164,6 +156,11 @@ class P2PServer {
         socket.close();
       }
     }
+  }
+
+  showPeerList() {
+    console.log(`now the list : ${this.peers}`);
+    console.log(`now the sockets: ${this.sockets.map(pair => pair.ip)}`);
   }
 
   broadCastToPeers(data) {
