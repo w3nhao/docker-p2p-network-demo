@@ -11,7 +11,6 @@
   "dependencies": {
     "crypto-js": "^3.1.9-1",
     "express": "^4.16.4",
-    "math": "0.0.3",
     "nslookup": "^1.1.1",
     "uuid": "^3.3.2",
     "ws": "^6.2.1"

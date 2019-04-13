@@ -32,8 +32,7 @@ class P2PServer {
     });
     console.log(`Listening for peers connection on port: ${LISTENING_PORT}`);
     server.on('connection', (socket, req) => {
-      this.connectSocket(socket);
-      console.log(req.connection.remoteAddress);
+      this.connectSocket(socket, req.connection.remoteAddress.substring(7));
     });
 
     // 将查询发起时间分散
@@ -52,15 +51,13 @@ class P2PServer {
       if (P2PServer.checkSignature(clientIP, token)) {
         // 列表中可能没有该IP
         if (!this.peers.includes(clientIP)) this.peers.push(clientIP);
-        info.req.clientIP = clientIP;
         return true;
       }
     }
     return false;
   }
 
-  connectSocket(socket) {
-    const clientIP = socket.upgradeReq.clientIP;
+  connectSocket(socket, clientIP) {
     this.sockets[clientIP] = socket;
     socket.on('message', message => console.log(JSON.stringify(message)));
   }
@@ -90,7 +87,7 @@ class P2PServer {
         resolve(socket);
       };
       socket.onerror = () => {
-        reject(new Error(`err#1 fail to waiting for socket open`));
+        reject('connection fail:' + event.message);
       };
     });
   }
