@@ -59,6 +59,7 @@ class P2PServer {
 
   connectSocket(socket, clientIP) {
     this.sockets[clientIP] = socket;
+    console.log(`we have ${clientIP} connected`);
     socket.on('message', message => console.log(JSON.stringify(message)));
   }
 
@@ -86,7 +87,7 @@ class P2PServer {
       socket.onopen = () => {
         resolve(socket);
       };
-      socket.onerror = () => {
+      socket.onerror = event => {
         reject('connection fail:' + event.message);
       };
     });
@@ -110,9 +111,8 @@ class P2PServer {
           `ws://${peer}:${LISTENING_PORT}` +
             `?token=${P2PServer.signAsServer(MYIP)}&ip=${MYIP}`
         );
-        // TODO 把连接好的socket行为
-        this.sockets[peer] = await this.waitingForOpen(socket);
-        console.log(`successfully connect to ${peer}`);
+        const openedSocket = await this.waitingForOpen(socket);
+        this.connectSocket(openedSocket, peer);
       } catch (err) {
         console.log(err);
       }
