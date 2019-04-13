@@ -33,15 +33,12 @@ class P2PServer {
     console.log(`Listening for peers connection on port: ${LISTENING_PORT}`);
     server.on('connection', (socket, req) => {
       this.connectSocket(socket, req.connection.remoteAddress.substring(7));
+      console.log(
+        `${req.connection.remoteAddress.substring(7)} connected to us`
+      );
     });
 
-    // 将查询发起时间分散
-    const waitingTime = () => {
-      let min = Math.ceil(1);
-      let max = Math.floor(20);
-      return Math.floor(Math.random() * (max - min)) + min; //不含最大值，含最小值
-    };
-    setTimeout(async () => this.discovery(SERVICE_NAME), 1000 * waitingTime);
+    setTimeout(async () => this.discovery(SERVICE_NAME), 5000);
   }
 
   verifyClient(info) {
@@ -57,12 +54,6 @@ class P2PServer {
     return false;
   }
 
-  connectSocket(socket, clientIP) {
-    this.sockets[clientIP] = socket;
-    console.log(`we have ${clientIP} connected`);
-    socket.on('message', message => console.log(JSON.stringify(message)));
-  }
-
   async discovery(serviceName) {
     try {
       const peerList = await this.getPeersFrom(serviceName);
@@ -72,14 +63,17 @@ class P2PServer {
       setTimeout(async () => this.discovery(SERVICE_NAME), 5000);
     }
 
-    // 成功收取后，并发连接列表上的peer
-    await Promise.all(
-      this.peers
-        .filter(peer => peer !== MYIP)
-        .map(peer => this.connectToPeer(peer))
-    );
+    // 设置间隔时间以免碰撞，并发连接列表上的peer
+    const interval = P2PServer.randNum(1, 20);
+    setTimeout(async () => {
+      await Promise.all(
+        this.peers
+          .filter(peer => peer !== MYIP)
+          .map(peer => this.connectToPeer(peer))
+      );
+    }, 1000 * interval);
 
-    this.showPeerList();
+    setTimeout(() => this.showPeerList(), 60000);
   }
 
   async waitingForOpen(socket) {
@@ -113,23 +107,52 @@ class P2PServer {
         );
         const openedSocket = await this.waitingForOpen(socket);
         this.connectSocket(openedSocket, peer);
+        console.log(`connection accept by ${peer}`);
       } catch (err) {
         console.log(err);
       }
+    } else {
+      console.log(`we\'ve connected with ${peer}`);
     }
   }
 
+  connectSocket(socket, clientIP) {
+    if (!this.sockets[clientIP]) {
+      this.sockets[clientIP] = socket;
+      socket.on('message', message => console.log(JSON.stringify(message)));
+    } else {
+      console.log(`collision with ${clientIP} happened`);
+      // 等待两方稳定下来，开始退避随机连接
+      setTimeout(() => this.fixCollision(clientIP), 5000);
+    }
+  }
+
+  fixCollision(peer) {
+    this.sockets[peer] = null;
+    console.log(`reset socket with ${peer}`);
+    const interval = P2PServer.randNum(1, 20);
+    setTimeout(() => this.connectToPeer(peer), 3000 * interval);
+  }
+
   showPeerList() {
+    const sockets = [];
+    for (let ip in this.sockets) {
+      if (this.sockets[ip]) sockets.push(ip);
+    }
     console.log(`now the list : ${JSON.stringify(this.peers)}`);
-    console.log(
-      `now the sockets: ${JSON.stringify(Object.keys(this.sockets))}`
-    );
+    console.log(`now the sockets: ${JSON.stringify()}`);
   }
 
   broadCastToPeers(data) {
     for (let ip in this.sockets) {
       sockets[ip].send(JSON.stringify(new P2PMsg(data)));
     }
+  }
+
+  static randNum(mini, maxi) {
+    let min = Math.ceil(mini);
+    let max = Math.floor(maxi);
+    return Math.floor(Math.random() * (max - min)) + min; //不含最大值，含最小值
   }
 
   static signAsServer(data) {
