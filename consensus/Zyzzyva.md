@@ -1,17 +1,17 @@
 目标：无错误情况的Zyzzyva算法
 
-1. 请求 block 内的部分信息由客户端client以request形式发送到服务器群
+1. 请求 block 内的每条评价（交易）由客户端client以request形式发送到服务器群,服务器群应有评价池。
 ```
 request = {
-   data,
+   data[],
    timestamp,
    signature    // 目前可以不添加 
  };
 ```
-2. 随机指定的主节点用request的内容生成区块并且将orderRequest发送给每个副本
+2. 随机指定的主节点用request的内容排序生成区块并且将orderRequest发送给每个副本
  ```
  block = {
-   data: request.data,
+   orderedData[],
    timestamp: request.timestamp,
    lastHahs,
    hash,
@@ -19,9 +19,9 @@ request = {
  }
 
  orderedRequest = {
-   data: request.data,
+   orderedData[],
    timestamp: request.timestamp,
-   blockchain
+
  }
  ```
 3. 每个副本将```request.data```以及```request.timestamp```拿来生成区块。并且验证整个区块链是否一致。
