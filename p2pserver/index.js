@@ -1,31 +1,21 @@
 const WebSocket = require('ws');
 const CryptoJS = require('crypto-js');
 const url = require('url');
-const nslookup = require('nslookup');
-const fs = require('fs');
 
 const SECRET = '7H1$!5453CR37';
 
-const SERVICE_NAME = 'simplep2p';
-
-// 从docker分配的节点host文件中获取内网ip
-const MYIP = fs
-  .readFileSync('/etc/hosts', 'utf8')
-  .toString()
-  .split(/[\s\n]/)[14];
-
+const MYIP = '192.168.178.160';
+const SERVICE_IP = '172.29.123.78';
 const LISTENING_PORT = 30000;
-
-const P2PMsg = require('./p2p-messages');
 
 class P2PServer {
   constructor() {
-    this.peers = [];
+    this.peers = [MYIP, SERVICE_IP];
     this.sockets = {}; // {ip, socket}
     this.myMessages = [];
   }
 
-  listen() {
+  async listen() {
     const server = new WebSocket.Server({
       port: LISTENING_PORT,
       verifyClient: info => this.verifyClient(info)
@@ -35,14 +25,12 @@ class P2PServer {
       this.connectSocket(socket);
       console.log(req.connection.remoteAddress);
     });
-
-    // 将查询发起时间分散
-    const waitingTime = () => {
-      let min = Math.ceil(1);
-      let max = Math.floor(20);
-      return Math.floor(Math.random() * (max - min)) + min; //不含最大值，含最小值
-    };
-    setTimeout(async () => this.discovery(SERVICE_NAME), 1000 * waitingTime);
+    await Promise.all(
+      this.peers
+        .filter(peer => peer !== MYIP)
+        .map(peer => this.connectToPeer(peer))
+    );
+    this.showPeerList();
   }
 
   verifyClient(info) {
@@ -65,25 +53,6 @@ class P2PServer {
     socket.on('message', message => console.log(JSON.stringify(message)));
   }
 
-  async discovery(serviceName) {
-    try {
-      const peerList = await this.getPeersFrom(serviceName);
-      this.peers.push(...peerList.filter(p => p !== MYIP));
-    } catch (err) {
-      console.log(err + ' ,try discovery again');
-      setTimeout(async () => this.discovery(SERVICE_NAME), 5000);
-    }
-
-    // 成功收取后，并发连接列表上的peer
-    await Promise.all(
-      this.peers
-        .filter(peer => peer !== MYIP)
-        .map(peer => this.connectToPeer(peer))
-    );
-
-    this.showPeerList();
-  }
-
   async waitingForOpen(socket) {
     return await new Promise((resolve, reject) => {
       socket.onopen = () => {
@@ -92,17 +61,6 @@ class P2PServer {
       socket.onerror = () => {
         reject(new Error(`err#1 fail to waiting for socket open`));
       };
-    });
-  }
-
-  async getPeersFrom(serviceName) {
-    return await new Promise((resolve, reject) => {
-      nslookup('tasks.' + serviceName + '_web')
-        .server('127.0.0.11')
-        .end((err, addrs) => {
-          resolve(addrs);
-          reject(err);
-        });
     });
   }
 
@@ -131,7 +89,6 @@ class P2PServer {
 
   broadCastToPeers(data) {
     for (let ip in this.sockets) {
-      sockets[ip].send(JSON.stringify(new P2PMsg(data)));
     }
   }
 
