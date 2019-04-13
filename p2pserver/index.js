@@ -5,9 +5,10 @@ const fs = require("fs");
 const MYIP = fs
   .readFileSync("/etc/hosts", "utf8")
   .toString()
-  .split(/[\s\n]/)[14]; 
+  .split(/[\s\n]/)[14];
 
 const SERVICE_IP = "144.34.172.50"; // 这里是公网入口
+
 const LISTENING_PORT = 30000;
 
 const P2PMsg = require("./p2p-messages");
@@ -20,7 +21,7 @@ const MSG_TYPES = {
 class P2PServer {
   constructor() {
     this.peers = [MYIP];
-    this.sockets = []; // {ip, socket}
+    this.sockets = {}; // {ip, socket}
     this.myMessages = [];
   }
 
@@ -79,11 +80,11 @@ class P2PServer {
   }
 
   copeWithConnectReq(socket, reqIP) {
-    if (this.sockets.some(pair => pair.ip === reqIP)) {
+    if (this.sockets[reqIP]) {
       socket.close();
       throw Error(`we have connect to ${reqIp} already`);
     } else {
-      this.sockets.push({ ip: reqIP, socket });
+      this.sockets[reqIP] = socket;
       // 可能在收到该socket之前，我们已经从别的节点获取到他的IP
       if (!this.peers.includes(reqIP)) this.peers.push(reqIP);
       console.log(`IP: ${reqIP} connectted to us`);
@@ -101,6 +102,8 @@ class P2PServer {
       console.log(err + " ,try discovery again");
       setTimeout(async () => this.discovery(), 5000);
     }
+
+    this.showPeerList();
 
     // 成功收取后，并发连接列表上的peer
     return await Promise.all(
@@ -137,16 +140,16 @@ class P2PServer {
   }
 
   async connectToPeer(peer) {
-    if (!this.sockets.some(pair => pair.ip === peer)) {
+    if (!this.sockets[peer]) {
       const socket = new WebSocket("ws://" + peer + ":" + LISTENING_PORT);
       try {
         let openedSocket = await this.waitingForOpen(socket);
         // 异步容错：几乎同时发起连接，若比对方落后，则关闭连接
-        if (!this.sockets.some(pair => pair.ip === peer)) {
+        if (!this.sockets[peer]) {
           openedSocket.send(
             JSON.stringify(new P2PMsg(MYIP, MSG_TYPES.peerConnect))
           );
-          this.sockets.push({ ip: peer, socket });
+          this.sockets[peer] = socket;
           console.log(`successfully connect to ${peer}`);
         } else {
           throw new Error(`${peer} connected to us already.`);
@@ -159,15 +162,14 @@ class P2PServer {
   }
 
   showPeerList() {
-    console.log(`now the list : ${this.peers}`);
-    console.log(`now the sockets: ${this.sockets.map(pair => pair.ip)}`);
+    console.log(`now the list : ${JSON.stringify(this.peers)}`);
+    console.log(`now the sockets: ${JSON.stringify(Object.keys(this.sockets))}`);
   }
 
   broadCastToPeers(data) {
-    this.sockets.forEach(pair => {
-      console.log(`broadcasting to server: ${pair.ip}`);
-      pair.socket.send(JSON.stringify(new P2PMsg(data)));
-    });
+    for (let ip in this.sockets) {
+      sockets[ip].send(JSON.stringify(new P2PMsg(data)));
+    }
   }
 }
 
