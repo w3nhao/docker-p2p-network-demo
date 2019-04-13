@@ -140,7 +140,7 @@ class P2PServer {
       if (this.sockets[ip]) sockets.push(ip);
     }
     console.log(`now the list : ${JSON.stringify(this.peers)}`);
-    console.log(`now the sockets: ${JSON.stringify()}`);
+    console.log(`now the sockets: ${JSON.stringify(sockets)}`);
   }
 
   broadCastToPeers(data) {
