@@ -22,15 +22,17 @@ class P2PServer {
     });
     console.log(`Listening for peers connection on port: ${LISTENING_PORT}`);
     server.on('connection', (socket, req) => {
-      this.connectSocket(socket);
       console.log(req.connection.remoteAddress);
+      this.connectSocket(socket);
     });
-    await Promise.all(
-      this.peers
-        .filter(peer => peer !== MYIP)
-        .map(peer => this.connectToPeer(peer))
-    );
-    this.showPeerList();
+    setTimeout(async () => {
+      await Promise.all(
+        this.peers
+          .filter(peer => peer !== MYIP)
+          .map(peer => this.connectToPeer(peer))
+      );
+    }, 15000);
+    setTimeout(() => this.showPeerList(), 20000);
   }
 
   verifyClient(info) {
