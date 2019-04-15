@@ -74,6 +74,7 @@ class P2PServer {
   connectSocket(socket, ip) {
     if (Object.keys(this.clients).includes(ip)) {
       this.clients[ip] = socket;
+      console.log('clients connected');
       socket.send(Protocol.viewIdMsg(this.viewId));
     } else {
       this.sockets[ip] = socket;
