@@ -19,6 +19,7 @@ class P2PServer {
     this.clients = {}; // 统计feathers接来的客户端地址与socket，用来回复
     this.workerIDs = {}; // 记录每个服务器的公钥地址
     this.supervisors = {}; // 缓存记录查询到的审查员公钥地址
+    this.requestCache = {}; // 缓存客户端发来的request
     this.blockchain = blockchain;
   }
 
@@ -78,8 +79,9 @@ class P2PServer {
     } else {
       this.sockets[ip] = socket;
     }
-    socket.on('message', message => this.responseToClient(socket, message));
-    // socket.on('message', message => console.log(message));
+    socket.on('message', message =>
+      this.msgHandler(socket, JSON.parse(message))
+    );
   }
 
   responseToClient(socket, data) {
@@ -125,22 +127,34 @@ class P2PServer {
     }
   }
 
-  // // ###
-  // msgHandler(message) {
-  //   switch (message.type) {
-  //     case MSGTYPES.request:
-  //       this.broadCastToPeers(MSGTYPES)
-  //       break;
-  //     case MSGTYPES.orderedRequest:
-  //       break;
-  //     case MSGTYPES.response:
-  //       break;
-  //     case MSGTYPES.commit:
-  //       break;
-  //     case MSGTYPES.localCommit:
-  //       break;
-  //   }
-  // }
+  // ###
+  msgHandler(socket, message) {
+    switch (message.type) {
+      case MSGTYPES.request:
+        const { hash, signature, assessments, timestamp } = message;
+        Protocol.verifyRequest(hash, signature);
+        if (this.peers[viewId] === MYIP) {
+          const block = this.blockchain.genBlock(timestamp, assessments);
+          this.broadCastToPeers(Protocol.orderedRequestMsg(...block));
+          this.blockchain.chain.push(block);
+          socket.send(JSON.stringify(block));
+        } else {
+          this.requestCache[timestamp] = {
+            hash,
+            signature,
+            assessments,
+            timestamp
+          };
+        }
+        break;
+      case MSGTYPES.orderedRequest:
+        break;
+      case MSGTYPES.commit:
+        break;
+      case MSGTYPES.localCommit:
+        break;
+    }
+  }
 
   // ###添加到Docker版本，用来确认viewID
   sortPeers(peers) {
