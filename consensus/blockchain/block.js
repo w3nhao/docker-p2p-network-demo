@@ -31,11 +31,11 @@ class Block {
   }
 
   static genesis() {
-    return new this('Genesis time', '-----', 'f1r57-h45h', [], 0, DIFFICULTY);
+    return new this('Genesis time', '-----', 'f1r57-h45h', [], 0);
   }
 
   static mineBlock(lastBlock, data) {
-    const hash = Block.hash(timestamp, lastHash, data, height, difficulty);
+    const hash = Block.hash(timestamp, lastHash, data, height);
     const lastHash = lastBlock.hash;
     const height = lastBlock.height + 1;
     const timestamp = Date.now();

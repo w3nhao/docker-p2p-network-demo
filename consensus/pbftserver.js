@@ -5,7 +5,7 @@ const url = require('url');
 const SECRET = '7H1$!5453CR37';
 const CLIENT_SECRET = '7H1$!54C213N753CR37';
 
-const MYIP = '192.168.178.160';
+const MYIP = '192.168.178.162';
 const SERVICE_IP = '172.29.123.78';
 const LISTENING_PORT = 30000;
 
@@ -75,11 +75,15 @@ class P2PServer {
     if (Object.keys(this.clients).includes(ip)) {
       this.clients[ip] = socket;
       console.log('clients connected');
-      socket.send(Protocol.viewIdMsg(this.viewId));
     } else {
       this.sockets[ip] = socket;
     }
-    socket.on('message', message => this.msgHandler(JSON.parse(message)));
+    socket.on('message', message => this.responseToClient(socket, message));
+    // socket.on('message', message => console.log(message));
+  }
+
+  responseToClient(socket, data) {
+    socket.send(data + MYIP);
   }
 
   async waitingForOpen(socket) {
@@ -139,7 +143,7 @@ class P2PServer {
   // }
 
   // ###添加到Docker版本，用来确认viewID
-  static sortPeers(peers) {
+  sortPeers(peers) {
     return peers.sort(
       (a, b) => parseInt(a.split('.')[3]) - parseInt(b.split('.')[3])
     );
