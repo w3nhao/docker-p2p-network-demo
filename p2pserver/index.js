@@ -49,7 +49,7 @@ class P2PServer {
 
   connectSocket(socket, clientIP) {
     this.sockets[clientIP] = socket;
-    socket.on('message', message => console.log(JSON.stringify(message)));
+    socket.on('message', message => this.myMessages.push(JSON.parse[message]));
   }
 
   async waitingForOpen(socket) {
@@ -88,6 +88,7 @@ class P2PServer {
 
   broadCastToPeers(data) {
     for (let ip in this.sockets) {
+      this.sockets[ip].send(JSON.stringify(data));
     }
   }
 
