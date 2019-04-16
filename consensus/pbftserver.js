@@ -19,7 +19,7 @@ class P2PServer {
     this.clients = {}; // 统计feathers接来的客户端地址与socket，用来回复
     this.workerIDs = {}; // 记录每个服务器的公钥地址
     this.supervisors = {}; // 缓存记录查询到的审查员公钥地址
-    this.requestCache = {}; // 缓存客户端发来的request
+    this.blockCache = {}; // 缓存客户端发来的request
     this.blockchain = blockchain;
   }
 
@@ -132,19 +132,28 @@ class P2PServer {
     switch (message.type) {
       case MSGTYPES.request:
         const { hash, signature, assessments, timestamp } = message;
-        Protocol.verifyRequest(hash, signature);
-        if (this.peers[viewId] === MYIP) {
-          const block = this.blockchain.genBlock(timestamp, assessments);
-          this.broadCastToPeers(Protocol.orderedRequestMsg(...block));
-          this.blockchain.chain.push(block);
-          socket.send(JSON.stringify(block));
+        if (Protocol.verifyRequest(hash, signature, assessments, timestamp)) {
+          if (this.peers[viewId] === MYIP) {
+            const block = this.blockchain.genBlock(timestamp, assessments);
+            this.broadCastToPeers(
+              Protocol.orderedRequestMsg(
+                block.hash,
+                hash,
+                signature,
+                assessments,
+                timestamp
+              )
+            );
+            this.blockchain.chain.push(block);
+            socket.send(JSON.stringify(block));
+          } else {
+            this.blockCache[timestamp] = this.blockchain.genBlock(
+              timestamp,
+              assessments
+            );
+          }
         } else {
-          this.requestCache[timestamp] = {
-            hash,
-            signature,
-            assessments,
-            timestamp
-          };
+          socket.send('This is an invalid request');
         }
         break;
       case MSGTYPES.orderedRequest:
