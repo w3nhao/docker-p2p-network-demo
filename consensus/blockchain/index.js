@@ -25,6 +25,7 @@ class Blockchain {
     }
     const leadingBlock = this.chainCache[this.chainCache.length - 1];
     this.chainCache = [leadingBlock];
+    console.log(`Now the chain height is ${this.chain.length}`);
   }
 
   isValidChain(chain) {

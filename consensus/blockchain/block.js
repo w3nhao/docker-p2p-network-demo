@@ -1,3 +1,4 @@
+const { ChainUtil } = require('../chain-utils');
 /**
  *
  *
@@ -37,14 +38,8 @@ class Block {
   static mineBlock(lastBlock, timestamp, data) {
     const lastHash = lastBlock.hash;
     const height = lastBlock.height + 1;
-    const hash = Block.hash(timestamp, lastHash, data, height);
+    const hash = ChainUtil.hash(timestamp, lastHash, data, height);
     return new Block(timestamp, lastHash, hash, data, height);
-  }
-
-  static hash(timestamp, lastHash, data, height) {
-    return SHA256(
-      JSON.stringify(`${timestamp}${lastHash}${data}${height}`)
-    ).toString();
   }
 
   static blockHash(block) {

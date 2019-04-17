@@ -4,10 +4,11 @@ const { ChainUtil } = require('./chain-utils');
 const MSGTYPES = {
   request: 1,
   orderedRequest: 2,
-  response: 3,
-  commit: 4,
-  localCommit: 5,
-  iHatePrimary: 6
+  confirmRequest: 3,
+  response: 4,
+  commit: 5,
+  localCommit: 6,
+  iHatePrimary: 7
 };
 
 class Protocol {
@@ -55,8 +56,32 @@ class Protocol {
     };
   }
 
-  static responseMsg(hash, timestamp) {
-    return { type: MSGTYPES.response, hash, timestamp };
+  /**
+   *
+   *
+   * @static
+   * @param {*} request 从客户端收到的requst
+   * @returns
+   * @memberof Protocol
+   */
+  static confirmRequest(request) {
+    return {
+      type: MSGTYPES.confirmRequest,
+      request
+    };
+  }
+
+  /**
+   *
+   *
+   * @static
+   * @param {*} block 本节点生成的block
+   * @returns
+   * @memberof Protocol
+   */
+  static responseMsg(block) {
+    const { timestamp, lastHash, hash, height } = block;
+    return { type: MSGTYPES.response, timestamp, lastHash, hash, height };
   }
 
   static commitMsg(data) {
@@ -66,6 +91,7 @@ class Protocol {
     return { type: MSGTYPES.localCommit, data };
   }
 
+  
   static verifyRequest(supervisors, request) {
     const { hash, signature, publicKey, assessments, timestamp } = request;
     if (!supervisors[publicKey]) {
@@ -83,20 +109,16 @@ class Protocol {
     return true;
   }
 
-  static verifyOrderedRequest(
-    supervisors,
-    blockchain,
-    requestCache,
-    blockHash,
-    request
-  ) {
+  static verifyOrderedRequest(supervisors, blockchain, blockHash, request) {
     const { assessments, timestamp } = request;
-    if (requestCache[timestamp]) {
-      return requestCache[timestamp].hash === blockHash ? true : false;
+    if (blockchain.requestTable[timestamp]) {
+      return blockchain.requestTable[timestamp].hash === blockHash
+        ? true
+        : false;
     } else {
       if (Protocol.verifyRequest(supervisors, request)) {
-        const block = blockchain.genBlock(timestamp, assessments);
-        requestCache[timestamp] = block;
+        const block = blockchain.addBlock(timestamp, assessments);
+        blockchain.requestTable[timestamp] = block;
         if (block.hash === blockHash) {
           return true;
         } else {

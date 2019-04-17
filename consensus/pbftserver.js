@@ -55,7 +55,6 @@ class P2PServer {
 
   verifyNode(info) {
     const { token, ip, role, pub } = url.parse(info.req.url, true).query;
-    console.log(ip);
     if (
       role === 'server' &&
       !this.sockets[ip] &&
@@ -140,20 +139,21 @@ class P2PServer {
 
   copeWithRequest(socket, message) {
     const { request } = message;
-    const { timestamp, assessments } = request;
     if (Protocol.verifyRequest(this.supervisors, request)) {
       if (this.peers[this.viewId] === MYIP) {
-        this.copeWithRequestAsPrimary(socket, timestamp, assessments);
+        this.copeWithRequestAsPrimary(socket, request);
       } else {
-        this.copeWithRequestAsReplicas(timestamp, assessments);
+        this.copeWithRequestAsReplicas(request);
       }
     } else {
       socket.send('This is an invalid request');
     }
   }
 
-  copeWithRequestAsPrimary(socket, timestamp, assessments) {
+  copeWithRequestAsPrimary(socket, request) {
+    const { timestamp, assessments } = request;
     const clientIp = this.findIp(socket);
+    console.log(`client${clientIp}`);
     const block = this.blockchain.addBlock(timestamp, assessments);
     this.broadCastToPeers(
       Protocol.orderedRequestMsg(block.hash, request, clientIp)
@@ -162,33 +162,34 @@ class P2PServer {
     console.log(`A new block generate ${JSON.stringify(block)}`);
   }
 
-  async copeWithRequestAsReplicas(timestamp, assessments) {
+  async copeWithRequestAsReplicas(request) {
+    const { timestamp, assessments } = request;
     if (!this.blockchain.requestTable[timestamp]) {
       this.blockchain.addBlock(timestamp, assessments);
-      console.log(`A new request arrived ${request}`);
-      // 超时1次后的处理为正解。
-      // 后续如何拒绝拜占庭客户端的请求？
+      // 若主节点网络延迟，或不响应的举动
       try {
-        await waitForOrderedRequest();
+        if (!(await this.waitForOrderedRequest(500))) {
+          this.sendTo(
+            this.sockets[this.viewId],
+            Protcol.confirmRequest(request)
+          );
+          if (!(await this.waitForOrderedRequest(500))) {
+            this.broadCastToPeers('IHATEPRIMARY');
+          }
+        }
       } catch (err) {
         console.log(err);
-        // TODO 发送R给主节点COMFIRM-R，继续等待
-        // 超时2次，广播IHATEPRIMARY
       }
     }
-    // 由于网络延迟或其他问题，OR比R先到达,什么都不做
+    // else 若由于网络延迟或其他问题，OR比R先到达,什么都不做
   }
 
-  async waitForOrderedRequest() {
+  async waitForOrderedRequest(ms) {
     return await Promise.race([
-      new Promise(resolve => {
-        pbft.on('receivedOrderedRquest', () => {
-          resolve('ok');
-        });
-      }),
-      new Promise(reject => {
-        setTimeout(() => reject(null), 500);
-      })
+      new Promise(resolve =>
+        pbft.on('receivedOrderedRquest', () => resolve(true))
+      ),
+      new Promise(reject => setTimeout(() => reject(false), ms))
     ]);
   }
 
@@ -196,6 +197,8 @@ class P2PServer {
     const incomingIp = this.findIp(socket);
     if (incomingIp === this.peers[this.viewId]) {
       const { blockHash, request, clientIp } = message;
+      console.log(`client received ${clientIp}`);
+      const { timestamp } = request;
       pbft.emit('receivedOrderedRquest');
       if (
         Protocol.verifyOrderedRequest(
@@ -205,9 +208,12 @@ class P2PServer {
           request
         )
       ) {
-        this.sendToClient(
+        this.sendTo(
           this.clients[clientIp],
-          Protocol.responseMsg(block.hash, block.timestamp)
+          Protocol.responseMsg(
+            this.blockchain.requestTable[timestamp].hash,
+            timestamp
+          )
         );
       } else {
         this.broadCastToPeers('IHATEPRIMARY');
@@ -216,21 +222,28 @@ class P2PServer {
       console.log(`Node ${incomingIp} misbehaving`);
     }
   }
-  // ###
+
   msgHandler(socket, message) {
     switch (message.type) {
       case MSGTYPES.request:
+        console.log(
+          `A new request arrived ${JSON.stringify(message.request.timestamp)}`
+        );
         this.copeWithRequest(socket, message);
         break;
       case MSGTYPES.orderedRequest:
         this.copeWithOrderedRequest(socket, message);
+        break;
+      case MSGTYPES.confirmRequest:
+        this.copeWithRequest(socket, message);
         break;
       case MSGTYPES.commit:
         break;
       case MSGTYPES.localCommit:
         break;
       default:
-        const ip = this.findIp();
+        const ip = this.findIp(socket);
+        if (ip === this.peers[viewId]) this.broadCastToPeers('IHATEPRIMARY');
         console.log(`Receive an unknown message from ${ip}`);
     }
   }
