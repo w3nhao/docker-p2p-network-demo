@@ -2,16 +2,27 @@ const Block = require('./block');
 
 class Blockchain {
   constructor() {
-    this.chain = [Block.genesis()];
+    this.chain = [];
+    this.chainCache = [Block.genesis()];
+    this.requestTable = {};
   }
 
-  genBlock(timestamp, data) {
+  addBlock(timestamp, data) {
     const block = Block.mineBlock(
-      this.chain[this.chain.length - 1],
+      this.chainCache[this.chain.length - 1],
       timestamp,
       data
     );
+    this.chainCache.push(block);
+    this.requestTable[timestamp] = block;
     return block;
+  }
+
+  cleanCache() {
+    for (let i = 0; i < this.chainCache.length - 1; i++) {
+      this.chain.push(this.chainCache[i]);
+      delete this.requestTable[this.chainCache[i].timestamp];
+    }
   }
 
   isValidChain(chain) {

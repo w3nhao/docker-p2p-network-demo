@@ -11,17 +11,19 @@ class ChainUtil {
     return ec.keyFromPrivate(priv, 'hex');
   }
 
-  static hash(data) {
+  // TODO 传入参数必须均为string
+  static hash() {
+    let data = [...arguments].reduce((str, arg) => {
+      str = str + arg;
+      return str;
+    });
+    // 相当于 SHA256(JSON.stringify(`${arg1}${arg2}`))
     return SHA256(JSON.stringify(data)).toString();
   }
 
   static verifySignature(account, signature, dataHash) {
     return ec.keyFromPublic(account, 'hex').verify(dataHash, signature);
   }
-
-  static verifyCommentSignatrue(comment) {}
 }
-
-
 
 module.exports = ChainUtil;
