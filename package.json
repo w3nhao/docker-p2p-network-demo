@@ -23,6 +23,9 @@
     "semi": true,
     "singleQuote": true
   },
+  "jest": {
+    "testEnvironment": "node"
+  },
   "author": "",
   "license": "ISC"
 }

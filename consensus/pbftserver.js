@@ -9,7 +9,7 @@ const SECRET = '7H1$!5453CR37';
 const CLIENT_SECRET = '7H1$!54C213N753CR37';
 
 const MYIP = '192.168.178.163';
-const SERVICE_IP = '172.29.123.78';
+const SERVICE_IP = '192.168.178.1';
 const LISTENING_PORT = 30000;
 
 const { MSGTYPES, Protocol } = require('./protocol.js');
@@ -53,9 +53,9 @@ class P2PServer {
     setTimeout(() => this.showPeerList(), 20000);
   }
 
-  // ####
   verifyNode(info) {
     const { token, ip, role, pub } = url.parse(info.req.url, true).query;
+    console.log(ip);
     if (
       role === 'server' &&
       !this.sockets[ip] &&
@@ -65,14 +65,14 @@ class P2PServer {
       if (!this.peers.includes(ip)) {
         this.peers.push(ip);
       }
-      this.relicaIDs[ip] = pub;
+      this.replicaIDs[ip] = pub;
       return true;
-    } else if (
-      role === 'client' &&
-      P2PServer.verify(ip, CLIENT_SECRET, token)
-    ) {
-      this.clients[ip] = null;
-      return true;
+    }
+    if (role === 'client') {
+      if (P2PServer.verify(ip, CLIENT_SECRET, token)) {
+        this.clients[ip] = null;
+        return true;
+      }
     }
     return false;
   }
@@ -142,10 +142,10 @@ class P2PServer {
     const { request } = message;
     const { timestamp, assessments } = request;
     if (Protocol.verifyRequest(this.supervisors, request)) {
-      if (this.peers[viewId] === MYIP) {
+      if (this.peers[this.viewId] === MYIP) {
         this.copeWithRequestAsPrimary(socket, timestamp, assessments);
       } else {
-        this.copeWithRequestAsReplicas(socket, timestamp, assessments);
+        this.copeWithRequestAsReplicas(timestamp, assessments);
       }
     } else {
       socket.send('This is an invalid request');
@@ -163,7 +163,7 @@ class P2PServer {
   }
 
   async copeWithRequestAsReplicas(timestamp, assessments) {
-    if (!this.blockchain.requestCache[timestamp]) {
+    if (!this.blockchain.requestTable[timestamp]) {
       this.blockchain.addBlock(timestamp, assessments);
       console.log(`A new request arrived ${request}`);
       // 超时1次后的处理为正解。
@@ -194,7 +194,7 @@ class P2PServer {
 
   copeWithOrderedRequest(socket, message) {
     const incomingIp = this.findIp(socket);
-    if (incomingIp === this.peers[viewId]) {
+    if (incomingIp === this.peers[this.viewId]) {
       const { blockHash, request, clientIp } = message;
       pbft.emit('receivedOrderedRquest');
       if (
@@ -220,7 +220,7 @@ class P2PServer {
   msgHandler(socket, message) {
     switch (message.type) {
       case MSGTYPES.request:
-        this.copeWithRequest(socket, request);
+        this.copeWithRequest(socket, message);
         break;
       case MSGTYPES.orderedRequest:
         this.copeWithOrderedRequest(socket, message);

@@ -37,7 +37,6 @@ class Block {
   static mineBlock(lastBlock, timestamp, data) {
     const lastHash = lastBlock.hash;
     const height = lastBlock.height + 1;
-    const timestamp = Date.now();
     const hash = Block.hash(timestamp, lastHash, data, height);
     return new Block(timestamp, lastHash, hash, data, height);
   }

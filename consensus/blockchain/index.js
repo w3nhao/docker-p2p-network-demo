@@ -2,14 +2,14 @@ const Block = require('./block');
 
 class Blockchain {
   constructor() {
-    this.chain = [];
+    this.chain = [Block.genesis()];
     this.chainCache = [Block.genesis()];
     this.requestTable = {};
   }
 
   addBlock(timestamp, data) {
     const block = Block.mineBlock(
-      this.chainCache[this.chain.length - 1],
+      this.chainCache[this.chainCache.length - 1],
       timestamp,
       data
     );
@@ -19,10 +19,12 @@ class Blockchain {
   }
 
   cleanCache() {
-    for (let i = 0; i < this.chainCache.length - 1; i++) {
+    for (let i = 1; i < this.chainCache.length; i++) {
       this.chain.push(this.chainCache[i]);
       delete this.requestTable[this.chainCache[i].timestamp];
     }
+    const leadingBlock = this.chainCache[this.chainCache.length - 1];
+    this.chainCache = [leadingBlock];
   }
 
   isValidChain(chain) {
