@@ -1,4 +1,4 @@
-const ChainUtil = require('./chain-utils');
+const { ChainUtil } = require('./chain-utils');
 
 const MSGTYPES = {
   request: 1,

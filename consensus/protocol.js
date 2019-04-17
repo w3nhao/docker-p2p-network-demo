@@ -1,5 +1,5 @@
-const ChainUtil = require('./chain-utils');
-const axios = require('axios');
+// const axios = require('axios');
+const { ChainUtil } = require('./chain-utils');
 
 const MSGTYPES = {
   request: 1,

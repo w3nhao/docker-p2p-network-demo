@@ -26,4 +26,18 @@ class ChainUtil {
   }
 }
 
-module.exports = ChainUtil;
+class KeyPair {
+  constructor() {
+    this.keyPair = ChainUtil.genKeyPair();
+  }
+
+  getPub() {
+    return this.keyPair.getPublic('hex');
+  }
+
+  getPriv() {
+    return this.keyPair.getPrivate('hex');
+  }
+}
+
+module.exports = { ChainUtil, KeyPair };

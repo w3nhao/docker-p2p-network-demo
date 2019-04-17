@@ -1,5 +1,6 @@
 const WebSocket = require('ws');
 const CryptoJS = require('crypto-js');
+const { KeyPair } = require('../consensus/chain-utils');
 const url = require('url');
 const events = require('events');
 const _ = require('lodash');
@@ -7,7 +8,7 @@ const _ = require('lodash');
 const SECRET = '7H1$!5453CR37';
 const CLIENT_SECRET = '7H1$!54C213N753CR37';
 
-const MYIP = '192.168.178.162';
+const MYIP = '192.168.178.163';
 const SERVICE_IP = '172.29.123.78';
 const LISTENING_PORT = 30000;
 
@@ -24,6 +25,7 @@ class P2PServer {
     this.replicaIDs = {}; // 记录每个服务器的公钥地址
     this.supervisors = supervisors; // 缓存记录查询到的审查员公钥地址
     this.blockchain = blockchain;
+    this.keys = new KeyPair();
   }
 
   async listen() {
@@ -105,7 +107,8 @@ class P2PServer {
       try {
         const socket = new WebSocket(
           `ws://${peer}:${LISTENING_PORT}` +
-            `?role=server&token=${P2PServer.sign(MYIP, SECRET)}&ip=${MYIP}`
+            `?role=server&token=${P2PServer.sign(MYIP, SECRET)}&ip=${MYIP}` +
+            `&pub=${this.keys.getPub()}`
         );
         this.connectSocket(await this.waitingForOpen(socket), peer);
       } catch (err) {

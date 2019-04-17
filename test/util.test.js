@@ -1,5 +1,5 @@
 const p2p = require('../consensus/pbftserver');
-const ChainUtil = require('../consensus/chain-utils');
+const { ChainUtil } = require('../consensus/chain-utils');
 const SHA256 = require('crypto-js/sha256');
 const CryptoJS = require('crypto-js');
 describe('test utils', () => {
