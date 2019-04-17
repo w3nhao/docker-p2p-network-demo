@@ -237,9 +237,8 @@ class P2PServer {
       case MSGTYPES.confirmRequest:
         this.copeWithRequest(socket, message);
         break;
-      case MSGTYPES.commit:
-        break;
       case MSGTYPES.localCommit:
+        this.copeWithLocalCommit();
         break;
       default:
         const ip = this.findIp(socket);
