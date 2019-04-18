@@ -158,6 +158,9 @@ class P2PServer {
     this.broadCastToPeers(
       Protocol.orderedRequestMsg(block.hash, request, clientIp)
     );
+    if ((block.height - 1) % 5 === 0) {
+      this.broadCastToPeers(Protocol.commitMsg(block.height));
+    }
     this.sendTo(socket, Protocol.responseMsg(block.hash, timestamp));
     console.log(`A new block generate ${JSON.stringify(block)}`);
   }
@@ -208,19 +211,26 @@ class P2PServer {
           request
         )
       ) {
+        const block = this.blockchain.requestTable[timestamp];
         this.sendTo(
           this.clients[clientIp],
-          Protocol.responseMsg(
-            this.blockchain.requestTable[timestamp].hash,
-            timestamp
-          )
+          Protocol.responseMsg(block.hash, timestamp)
         );
+        if ((block.height - 1) % 5 === 0) {
+          this.broadCastToPeers(Protocol.commitMsg(block.height));
+        }
       } else {
         this.broadCastToPeers('IHATEPRIMARY');
       }
     } else {
       console.log(`Node ${incomingIp} misbehaving`);
     }
+  }
+
+  copeWithCommit(socket, message) {
+    const { height } = message;
+    const commitIP = this.findIp(socket);
+    this.blockchain.commitBlock(height, this.peers, commitIP);
   }
 
   msgHandler(socket, message) {
@@ -238,7 +248,7 @@ class P2PServer {
         this.copeWithRequest(socket, message);
         break;
       case MSGTYPES.localCommit:
-        this.copeWithLocalCommit();
+        this.copeWithCommit(socket, message);
         break;
       default:
         const ip = this.findIp(socket);

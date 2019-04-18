@@ -84,14 +84,10 @@ class Protocol {
     return { type: MSGTYPES.response, timestamp, lastHash, hash, height };
   }
 
-  static commitMsg(data) {
-    return { type: MSGTYPES.commit, data };
-  }
-  static localCommitMsg(data) {
-    return { type: MSGTYPES.localCommit, data };
+  static commitMsg(height) {
+    return { type: MSGTYPES.commit, height };
   }
 
-  
   static verifyRequest(supervisors, request) {
     const { hash, signature, publicKey, assessments, timestamp } = request;
     if (!supervisors[publicKey]) {
