@@ -1,3 +1,4 @@
+const { ChainUtil } = require('../chain-utils');
 /**
  *
  *
@@ -31,19 +32,14 @@ class Block {
   }
 
   static genesis() {
-    return new this('Genesis time', '-----', 'f1r57-h45h', [], 0, DIFFICULTY);
+    return new this('Genesis time', '-----', 'f1r57-h45h', [], 0);
   }
 
-  static mineBlock(lastBlock, data) {
-    const hash = Block.hash(timestamp, lastHash, data, height, difficulty);
+  static mineBlock(lastBlock, timestamp, data) {
     const lastHash = lastBlock.hash;
     const height = lastBlock.height + 1;
-    const timestamp = Date.now();
+    const hash = ChainUtil.hash(timestamp, lastHash, data, height);
     return new Block(timestamp, lastHash, hash, data, height);
-  }
-
-  static hash(timestamp, lastHash, data, height) {
-    return SHA256(JSON.stringify(`${timestamp}${lastHash}${data}${height}`)).toString();
   }
 
   static blockHash(block) {

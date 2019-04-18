@@ -135,12 +135,10 @@ class P2PServer {
   }
 
   showPeerList() {
-    const sockets = [];
-    for (let ip in this.sockets) {
-      if (this.sockets[ip]) sockets.push(ip);
-    }
     console.log(`now the list : ${JSON.stringify(this.peers)}`);
-    console.log(`now the sockets: ${JSON.stringify(sockets)}`);
+    console.log(
+      `now the sockets: ${JSON.stringify(Object.keys(this.sockets))}`
+    );
   }
 
   broadCastToPeers(data) {
