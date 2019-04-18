@@ -8,7 +8,7 @@ const _ = require('lodash');
 const SECRET = '7H1$!5453CR37';
 const CLIENT_SECRET = '7H1$!54C213N753CR37';
 
-const MYIP = '192.168.178.163';
+const MYIP = '192.168.178.164';
 const SERVICE_IP = '192.168.178.1';
 const LISTENING_PORT = 30000;
 
@@ -153,13 +153,17 @@ class P2PServer {
   copeWithRequestAsPrimary(socket, request) {
     const { timestamp, assessments } = request;
     const clientIp = this.findIp(socket);
-    console.log(`client${clientIp}`);
+    console.log(`client ${clientIp}`);
     const block = this.blockchain.addBlock(timestamp, assessments);
     this.broadCastToPeers(
       Protocol.orderedRequestMsg(block.hash, request, clientIp)
     );
-    if ((block.height - 1) % 5 === 0) {
-      this.broadCastToPeers(Protocol.commitMsg(block.height));
+    if (block.height % 5 === 1) {
+      const height = block.height - 1;
+      const peers = [...this.peers];
+      // peers.push(MYIP);
+      this.blockchain.commitBlock(height, peers, MYIP);
+      this.broadCastToPeers(Protocol.commitMsg(height));
     }
     this.sendTo(socket, Protocol.responseMsg(block.hash, timestamp));
     console.log(`A new block generate ${JSON.stringify(block)}`);
@@ -170,11 +174,12 @@ class P2PServer {
     if (!this.blockchain.requestTable[timestamp]) {
       this.blockchain.addBlock(timestamp, assessments);
       // 若主节点网络延迟，或不响应的举动
+      // 此处若主节点的socket关闭，直接IHATEPRIMARY
       try {
         if (!(await this.waitForOrderedRequest(500))) {
           this.sendTo(
             this.sockets[this.viewId],
-            Protcol.confirmRequest(request)
+            Protocol.confirmRequest(request)
           );
           if (!(await this.waitForOrderedRequest(500))) {
             this.broadCastToPeers('IHATEPRIMARY');
@@ -190,7 +195,7 @@ class P2PServer {
   async waitForOrderedRequest(ms) {
     return await Promise.race([
       new Promise(resolve =>
-        pbft.on('receivedOrderedRquest', () => resolve(true))
+        pbft.once('receivedOrderedRquest', () => resolve(true))
       ),
       new Promise(reject => setTimeout(() => reject(false), ms))
     ]);
@@ -216,8 +221,12 @@ class P2PServer {
           this.clients[clientIp],
           Protocol.responseMsg(block.hash, timestamp)
         );
-        if ((block.height - 1) % 5 === 0) {
-          this.broadCastToPeers(Protocol.commitMsg(block.height));
+        if (block.height % 5 === 1) {
+          const height = block.height - 1;
+          const peers = [...this.peers];
+          // peers.push(MYIP);
+          this.blockchain.commitBlock(height, peers, MYIP);
+          this.broadCastToPeers(Protocol.commitMsg(height));
         }
       } else {
         this.broadCastToPeers('IHATEPRIMARY');
@@ -247,18 +256,24 @@ class P2PServer {
       case MSGTYPES.confirmRequest:
         this.copeWithRequest(socket, message);
         break;
-      case MSGTYPES.localCommit:
+      case MSGTYPES.commit:
         this.copeWithCommit(socket, message);
         break;
       default:
         const ip = this.findIp(socket);
-        if (ip === this.peers[viewId]) this.broadCastToPeers('IHATEPRIMARY');
+        if (ip === this.peers[this.viewId])
+          this.broadCastToPeers('IHATEPRIMARY');
         console.log(`Receive an unknown message from ${ip}`);
     }
   }
 
   sendTo(socket, message) {
-    socket.send(JSON.stringify(message));
+    try {
+      socket.send(JSON.stringify(message));
+    } catch (err) {
+      if (this.findIp(socket) === this.peers[this.viewId])
+        this.broadCastToPeers('IHATEPRIMARY');
+    }
   }
 
   // ###添加到Docker版本，用来确认viewID
